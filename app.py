@@ -77,30 +77,12 @@ if create_btn and uploaded_file:
 
     durasi_video = video_clip.duration
 
-    with st.spinner("🔊 Menggabungkan Audio & Video..."):
-        # Generate Audio
-        asyncio.run(generate_voice(naskah_clean, voice_map[voice_opt], "vo.mp3"))
-        audio_clip = AudioFileClip("vo.mp3")
-        
-        # Gabungkan Audio ke Video 
-        # Gunakan .set_duration agar audio tidak lebih panjang dari video
-        final_audio = CompositeAudioClip([audio_clip.set_start(0)]).set_duration(durasi_video)
-        final_video = video_clip.set_audio(final_audio)
-        
-        # --- PERBAIKAN DI SINI ---
-        output_name = "ZarAutomator_Final.mp4"
-        
-        # Tambahkan parameter 'preset' dan pastikan tidak ada perubahan resize paksa
-        final_video.write_videofile(
-            output_name, 
-            codec="libx264", 
-            audio_codec="aac", 
-            fps=24,
-            preset="medium", # Menggunakan medium agar kualitas lebih stabil
-            ffmpeg_params=["-crf", "18"] # Menjaga kualitas visual tetap tajam
-        )
-
-        st.video(output_name)
+    with st.status("🤖 AI sedang memproses...", expanded=True) as status:
+        # 1. Analisis Gemini
+        video_ai = genai.upload_file(path=video_path)
+        while video_ai.state.name == "PROCESSING":
+            time.sleep(2)
+            video_ai = genai.get_file(video_ai.name)
 
         model = genai.GenerativeModel(model_name="gemini-3-flash-preview")
         prompt = f"Buat narasi {kategori} dalam {bahasa} gaya {gaya}. Durasi {durasi_video:.1f} detik. Instruksi: {instruksi_user}. HANYA output teks narasi."

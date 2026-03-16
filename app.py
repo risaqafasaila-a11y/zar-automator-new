@@ -52,7 +52,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     voice_opt = st.selectbox("Pilih Karakter Suara:", ["Pria (Ardi)", "Wanita (Gadis)"])
     voice_map = {"Pria (Ardi)": "id-ID-ArdiNeural", "Wanita (Gadis)": "id-ID-GadisNeural"}
-    gaya = st.selectbox("Gaya Bicara:", ["Santai", "Seru & Enerjik", "Formal", "Gaul/Slang", "Komentator Bola", "Sales Promosi", "Dramatis", "Misterius"])
+    gaya = st.selectbox("Gaya Bicara:", ["Energetik/Semangat", "Ceria/Friendly", "Dramatis", "Deep/Filosofis", "Formal/Profesional", "Santai/Conversational", "Otoriter/Tegas", "Persuasif (Sales)", "Misterius/Suspense", "Sarkas/Lucu"])
 
 with col2:
     bahasa = st.selectbox("Pilih Bahasa:", ["Bahasa Indonesia", "Bahasa Sunda", "Bahasa Jawa", "Bahasa Inggris"])

@@ -56,7 +56,7 @@ with col1:
 
 with col2:
     bahasa = st.selectbox("Pilih Bahasa:", ["Bahasa Indonesia", "Bahasa Sunda", "Bahasa Jawa", "Bahasa Inggris"])
-    kategori = st.selectbox("Tujuan Video:", ["Review Produk", "Motivasi", "Sinematik Showcase", "Storytelling", "Vlog Harian", "Parodi/Lucu"])
+    kategori = st.selectbox("Tujuan Video:", ["Review Produk (Detail)", "Fakta Unik", "Soft Sell (Showcase)", "Hard Sell (Persuasif)", "Cinematic Showcase", "Storytelling/Bercerita", "Stand Up Comedy/Parodi", "Motivasi & Inspirasi", "Menjawab Pertanyaan (Q&A)", "Opini atau Reaksi (Reaction)", "Klarifikasi", "Ucapan Terima Kasih (Appreciation)", "Hunting/Daily Vlog"])
 
 with col3:
     st.write(" ")

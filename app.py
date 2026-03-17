@@ -4,21 +4,22 @@ import time
 import asyncio
 import edge_tts
 import os
-from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, ColorClip, CompositeVideoClip
+from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
 
-# --- 1. KONFIGURASI KEAMANAN ---
+# --- 1. KEAMANAN API KEY (STREAMLIT SECRETS) ---
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
-    st.error("❌ API Key tidak ditemukan di Secrets.")
+    st.error("❌ API Key tidak ditemukan! Masukkan GEMINI_API_KEY di menu Settings > Secrets pada Streamlit Cloud.")
     st.stop()
 
 async def generate_voice(text, voice_name, output_path):
-    communicate = edge_tts.Communicate(text, voice_name, rate="+5%")
+    communicate = edge_tts.Communicate(text, voice_name, rate="+0%")
     await communicate.save(output_path)
 
 st.set_page_config(page_title="Zar's Video Automator Pro", layout="wide")
 st.title("🎬 Zar's Video Automator Pro")
+st.markdown("Automasi Video dengan Fitur **Auto-Rotation Fix**")
 
 # --- BAGIAN 1: INPUT VIDEO ---
 st.subheader("1. Input Video")
@@ -28,89 +29,98 @@ video_path = "temp_video.mp4"
 if uploaded_file:
     with open(video_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
+    
+    # --- DETEKSI ROTASI & RESOLUSI ---
+    temp_clip = VideoFileClip(video_path)
+    
+    # Perbaikan Metadata Rotasi (PENTING untuk Portrait HP)
+    if temp_clip.rotation == 90 or temp_clip.rotation == 270:
+        lebar, tinggi = temp_clip.h, temp_clip.w
+        tipe_video = "Portrait (Tegak)"
+    else:
+        lebar, tinggi = temp_clip.size
+        tipe_video = "Portrait (Tegak)" if tinggi > lebar else "Landscape (Mendatar)"
+    
+    st.info(f"📹 Video terdeteksi: **{tipe_video}** | Resolusi: {lebar}x{tinggi} | FPS: {temp_clip.fps}")
     st.video(uploaded_file)
+    temp_clip.close()
 
-# --- BAGIAN 2: PENGATURAN ---
-st.subheader("2. Menu Pengaturan & Format")
+# --- BAGIAN 2: PENGATURAN KONTEN ---
+st.subheader("2. Menu Pengaturan Konten")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    voice_opt = st.selectbox("Pilih Suara:", ["Pria (Ardi)", "Wanita (Gadis)"])
+    voice_opt = st.selectbox("Pilih Karakter Suara:", ["Pria (Ardi)", "Wanita (Gadis)"])
     voice_map = {"Pria (Ardi)": "id-ID-ArdiNeural", "Wanita (Gadis)": "id-ID-GadisNeural"}
-    gaya = st.selectbox("Gaya Bicara:", ["Energetik", "Ceria", "Dramatis", "Formal", "Santai"])
+    gaya = st.selectbox("Gaya Bicara:", ["Energetik/Semangat", "Ceria/Friendly", "Dramatis", "Deep/Filosofis", "Formal/Profesional", "Santai/Conversational", "Otoriter/Tegas", "Persuasif (Sales)", "Misterius/Suspense", "Sarkas/Lucu"])
 
 with col2:
-    bahasa = st.selectbox("Pilih Bahasa:", ["Bahasa Indonesia", "Bahasa Sunda", "Bahasa Jawa"])
-    kategori = st.selectbox("Tujuan Video:", ["Review Produk", "Vlog", "Cinematic", "Storytelling"])
+    bahasa = st.selectbox("Pilih Bahasa:", ["Bahasa Indonesia", "Bahasa Sunda", "Bahasa Jawa", "Bahasa Inggris"])
+    kategori = st.selectbox("Tujuan Video:", ["Review Produk (Detail)", "Fakta Unik", "Soft Sell (Showcase)", "Hard Sell (Persuasif)", "Cinematic Showcase", "Storytelling/Bercerita", "Stand Up Comedy/Parodi", "Motivasi & Inspirasi", "Menjawab Pertanyaan (Q&A)", "Opini atau Reaksi (Reaction)", "Klarifikasi", "Ucapan Terima Kasih (Appreciation)", "Hunting/Daily Vlog"])
 
 with col3:
-    # --- FITUR BARU: PILIHAN FORMAT ---
-    format_output = st.radio("Format Output Akhir:", 
-                             ["9:16 Portrait (TikTok/Shorts)", "16:9 Landscape (YouTube)"])
+    st.write(" ")
+    st.write(" ")
     create_btn = st.button("🚀 GENERATE FINAL VIDEO", use_container_width=True)
 
-instruksi_user = st.text_area("✍️ Instruksi Tambahan (Opsional):")
+instruksi_user = st.text_area("✍️ Instruksi Tambahan (Opsional):", placeholder="Contoh: Sebutkan 'Gaskeun', mention channel 'Zar Diecast'...")
 
 # --- BAGIAN 3: PROSES AI & RENDERING ---
 if create_btn and uploaded_file:
-    # 1. Load & Fix Rotation
+    # Load Video dengan orientasi yang benar
     video_clip = VideoFileClip(video_path)
-    if video_clip.rotation in [90, 180, 270]:
-        video_clip = video_clip.rotate(video_clip.rotation)
+    
+    # FIX: Paksa orientasi jika metadata rotasi ada
+    if video_clip.rotation == 90 or video_clip.rotation == 270:
+        video_clip = video_clip.resize(video_clip.size[::-1])
         video_clip.rotation = 0
 
     durasi_video = video_clip.duration
 
-    with st.status("🤖 Memproses Video...", expanded=True) as status:
-        # A. Gemini Analysis
+    with st.status("🤖 AI sedang memproses...", expanded=True) as status:
+        # 1. Analisis Gemini
         video_ai = genai.upload_file(path=video_path)
         while video_ai.state.name == "PROCESSING":
             time.sleep(2)
             video_ai = genai.get_file(video_ai.name)
 
         model = genai.GenerativeModel(model_name="gemini-3-flash-preview")
-        prompt = f"Buat narasi {kategori} dalam {bahasa} gaya {gaya}. Durasi {durasi_video:.1f}s. {instruksi_user}"
+        prompt = f"Buat narasi {kategori} dalam {bahasa} gaya {gaya}. Durasi {durasi_video:.1f} detik. Instruksi: {instruksi_user}. HANYA output teks narasi."
+        
         response = model.generate_content([video_ai, prompt])
-        naskah_clean = response.text.strip().replace('"', '')
+        naskah_clean = response.text.replace('"', '').strip()
 
-        # B. Voice Over
+        st.write(f"📝 **Naskah AI:** {naskah_clean}")
+
+        # 2. Voice Over
+        st.write("🔊 Menghasilkan suara...")
         asyncio.run(generate_voice(naskah_clean, voice_map[voice_opt], "vo.mp3"))
+
+        # 3. Audio Mixing & Lock Duration
+        st.write("🎬 Merender video (Menjaga Resolusi)...")
         audio_clip = AudioFileClip("vo.mp3")
         audio_final = CompositeAudioClip([audio_clip.set_start(0)]).set_duration(durasi_video)
 
-        # C. RESIZE LOGIC (Anti-Gepeng untuk antar platform)
-        st.write("📐 Menyesuaikan format video...")
+        # 4. Final Render (Mengunci FPS dan Ukuran Asli)
+        final_video = video_clip.set_audio(audio_final)
+        output_name = "final_output.mp4"
         
-        target_w, target_h = (720, 1280) if "9:16" in format_output else (1280, 720)
-        
-        # Resize video asli agar muat di target tanpa gepeng (fit)
-        video_resized = video_clip.resize(height=target_h) if "9:16" in format_output else video_clip.resize(width=target_w)
-        
-        # Jika masih lebih lebar/tinggi dari target, kita resize ulang berdasarkan sisi satunya
-        if video_resized.w > target_w: video_resized = video_clip.resize(width=target_w)
-        if video_resized.h > target_h: video_resized = video_clip.resize(height=target_h)
-
-        # Buat background hitam agar sisa ruang tertutup
-        bg = ColorClip(size=(target_w, target_h), color=(0,0,0)).set_duration(durasi_video)
-        
-        # Gabungkan video asli di atas background hitam (Center)
-        final_ui_video = CompositeVideoClip([bg, video_resized.set_position("center")])
-        final_ui_video = final_ui_video.set_audio(audio_final)
-
-        # D. Rendering
-        output_name = f"ZarAI_{int(time.time())}.mp4"
-        final_ui_video.write_videofile(
+        final_video.write_videofile(
             output_name, 
             codec="libx264", 
             audio_codec="aac", 
-            fps=24, 
+            fps=video_clip.fps, 
             preset="ultrafast",
-            ffmpeg_params=["-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2"]
+            threads=4
         )
+        
         status.update(label="✅ Selesai!", state="complete")
 
+    st.success("Berhasil! Silakan cek hasil di bawah:")
     st.video(output_name)
-    with open(output_name, "rb") as file:
-        st.download_button(label="📥 Download Video", data=file, file_name=output_name)
 
+    with open(output_name, "rb") as file:
+        st.download_button(label="📥 Download Video", data=file, file_name=f"ZarAI_{int(time.time())}.mp4")
+
+    # Tutup klip agar memori tidak penuh
     video_clip.close()

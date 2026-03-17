@@ -121,6 +121,23 @@ if create_btn and uploaded_file:
 
     with open(output_name, "rb") as file:
         st.download_button(label="📥 Download Video", data=file, file_name=f"ZarAI_{int(time.time())}.mp4")
+# --- FITUR AUTO-CLEANUP (Ramah Server) ---
+    # Beri jeda sebentar agar browser sempat memulai proses download
+    time.sleep(2) 
+    
+    # Kumpulkan daftar file yang harus dihapus
+    files_to_clean = [video_path, "vo.mp3", output_name]
+    
+    for file in files_to_clean:
+        if os.path.exists(file):
+            try:
+                os.remove(file)
+            except Exception as e:
+                # Gagal hapus biasanya karena file masih dikunci sistem
+                pass
 
+    # Bersihkan Cache Streamlit untuk membebaskan RAM server
+    st.cache_data.clear()
+    st.cache_resource.clear()
     # Tutup klip agar memori tidak penuh
     video_clip.close()
